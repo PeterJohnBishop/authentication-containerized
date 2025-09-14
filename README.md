@@ -1,4 +1,4 @@
-# redesigned-telegram
+# authentication-containerized
 
 Build, run, lint, test
 - Build: go build ./...
