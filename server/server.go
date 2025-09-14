@@ -25,8 +25,8 @@ func StartAuthenticationServer() {
 	router := gin.Default()
 	protected := router.Group("/api")
 	protected.Use(middleware.JWTMiddleware())
-	addOpenUserRoutes(router, postgres)
-	addProtectedUserRoutes(protected, postgres)
+	addOpenRoutes(router, postgres)
+	addProtectedRoutes(protected, postgres)
 	log.Println("[CONNECTED] authentication server on :8081")
 	router.Run(":8081")
 }

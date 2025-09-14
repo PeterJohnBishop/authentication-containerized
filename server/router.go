@@ -7,24 +7,24 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func addOpenUserRoutes(r *gin.Engine, db *sql.DB) {
+func addOpenRoutes(r *gin.Engine, db *sql.DB) {
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"message": "Hello, you've reached the authentication server. Please leave a message after the beep.",
 		})
 	})
-	r.POST("/login", func(c *gin.Context) {
+	r.POST("auth/login", func(c *gin.Context) {
 		handlers.Login(db, c)
 	})
-	r.POST("/register", func(c *gin.Context) {
+	r.POST("auth/register", func(c *gin.Context) {
 		handlers.RegisterUser(db, c)
 	})
-	r.GET("/refresh", func(c *gin.Context) {
+	r.GET("auth/refresh", func(c *gin.Context) {
 		handlers.Refresh(c)
 	})
 }
 
-func addProtectedUserRoutes(r *gin.RouterGroup, db *sql.DB) {
+func addProtectedRoutes(r *gin.RouterGroup, db *sql.DB) {
 
 	r.GET("/users", func(c *gin.Context) {
 		handlers.GetUsers(db, c)
