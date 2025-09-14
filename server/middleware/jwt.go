@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -72,7 +73,7 @@ func ValidateToken(tokenStr string, isRefresh bool) (*UserClaims, error) {
 	}
 
 	token, err := jwt.ParseWithClaims(tokenStr, &UserClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return []byte(secret), nil // ✅ convert string to []byte here
+		return []byte(secret), nil
 	})
 	if err != nil {
 		fmt.Printf("Error parsing token: %v\n", err)
@@ -96,6 +97,7 @@ func JWTMiddleware() gin.HandlerFunc {
 		}
 
 		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+
 		claims, err := ValidateToken(tokenStr, false)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
@@ -103,7 +105,44 @@ func JWTMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		tokens, ok := GetTokens(claims.ID)
+		if !ok || tokens["access"] != tokenStr {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token revoked"})
+			c.Abort()
+			return
+		}
+
 		c.Set("userID", claims.ID)
 		c.Next()
 	}
+}
+
+var (
+	activeTokens   = make(map[string]map[string]string)
+	activeTokensMu sync.Mutex
+)
+
+func StoreTokens(userID, access, refresh string) {
+	activeTokensMu.Lock()
+	defer activeTokensMu.Unlock()
+
+	activeTokens[userID] = map[string]string{
+		"access":  access,
+		"refresh": refresh,
+	}
+}
+
+func RevokeTokens(userID string) {
+	activeTokensMu.Lock()
+	defer activeTokensMu.Unlock()
+
+	delete(activeTokens, userID)
+}
+
+func GetTokens(userID string) (map[string]string, bool) {
+	activeTokensMu.Lock()
+	defer activeTokensMu.Unlock()
+
+	tokens, ok := activeTokens[userID]
+	return tokens, ok
 }

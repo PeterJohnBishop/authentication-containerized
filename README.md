@@ -15,6 +15,11 @@ Environment and configuration
 - Required env (loaded via github.com/joho/godotenv): PSQL_HOST, PSQL_PORT, PSQL_USER, PSQL_PASSWORD, PSQL_DBNAME, ACCESS_SECRET, REFRESH_SECRET
 - .env is mandatory locally; do not commit secrets. In CI, provide via environment or secret store
 
+After any update:
+
+docker build -t peterjbishop/authentication-containerized:latest .
+docker push peterjbishop/authentication-containerized:latest
+docker pull peterjbishop/authentication-containerized:latest
 docker-compose down 
 docker-compose build --no-cache 
 docker-compose up

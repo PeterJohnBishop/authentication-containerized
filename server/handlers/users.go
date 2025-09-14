@@ -86,8 +86,29 @@ func RegisterUser(db *sql.DB, c *gin.Context) {
 		return
 	}
 
-	fmt.Println("User registered successfully:", userId)
-	c.JSON(http.StatusCreated, gin.H{"message": "User created!"})
+	access, refresh, err := middleware.GenerateTokens(userId)
+	if err != nil {
+		fmt.Println("Failed to generate tokens:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate tokens"})
+		return
+	}
+
+	middleware.StoreTokens(userId, access, refresh)
+
+	fmt.Println("User registered and logged in successfully:", userId)
+	c.JSON(http.StatusCreated, gin.H{
+		"message":      "User created and logged in!",
+		"token":        access,
+		"refreshToken": refresh,
+		"user": gin.H{
+			"id":    userId,
+			"name":  user.Name,
+			"email": user.Email,
+			// omit password hash
+			"files":  user.Files,
+			"online": user.Online,
+		},
+	})
 }
 
 type LoginRequest struct {
@@ -141,12 +162,21 @@ func Login(db *sql.DB, c *gin.Context) {
 		return
 	}
 
+	middleware.StoreTokens(user.ID, access, refresh)
+
 	fmt.Println("Login successful for user:", user.ID)
 	c.JSON(http.StatusOK, gin.H{
 		"message":      "Login Success",
 		"token":        access,
 		"refreshToken": refresh,
-		"user":         user,
+		"user": gin.H{
+			"id":    user.ID,
+			"name":  user.Name,
+			"email": user.Email,
+			// omit password hash
+			"files":  user.Files,
+			"online": user.Online,
+		},
 	})
 }
 
@@ -288,4 +318,22 @@ func DeleteUserByID(db *sql.DB, c *gin.Context) {
 
 	fmt.Println("User deleted successfully:", id)
 	c.JSON(http.StatusOK, gin.H{"message": "User deleted!"})
+}
+
+type LogoutRequest struct {
+	Id string `json:"id"`
+}
+
+func Logout(c *gin.Context) {
+	var req LogoutRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		fmt.Println("Failed to bind JSON:", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	middleware.RevokeTokens(req.Id)
+
+	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully, tokens revoked"})
 }

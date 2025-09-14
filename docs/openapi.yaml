@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Redesigned Telegram Authentication API
-  version: 1.0.0
+  version: 1.1.0
   description: |
     Authentication and user management API served by this project.
 servers:
@@ -40,18 +40,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  token:
-                    type: string
-                    description: Access token (JWT)
-                  refreshToken:
-                    type: string
-                    description: Refresh token (JWT)
-                  user:
-                    $ref: '#/components/schemas/User'
+                $ref: '#/components/schemas/AuthResponse'
         '400':
           description: Invalid request body
         '401':
@@ -63,7 +52,7 @@ paths:
 
   /auth/register:
     post:
-      summary: Register a new user
+      summary: Register a new user and receive tokens
       operationId: postAuthRegister
       requestBody:
         required: true
@@ -73,14 +62,11 @@ paths:
               $ref: '#/components/schemas/UserCreate'
       responses:
         '201':
-          description: Created
+          description: Created and logged in
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  message:
-                    type: string
+                $ref: '#/components/schemas/AuthResponse'
         '400':
           description: Invalid request
         '500':
@@ -90,13 +76,6 @@ paths:
     get:
       summary: Refresh access token using a refresh token
       operationId: getAuthRefresh
-      parameters:
-        - in: header
-          name: Content-Type
-          schema:
-            type: string
-          required: false
-          example: application/json
       requestBody:
         required: true
         content:
@@ -123,6 +102,21 @@ paths:
           description: Invalid refresh token
         '500':
           description: Server error
+
+  /auth/logout:
+    post:
+      summary: Logout current user and revoke tokens
+      operationId: postAuthLogout
+      responses:
+        '200':
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
 
   /api/users:
     get:
@@ -284,3 +278,32 @@ components:
         password:
           type: string
       required: [email, password]
+
+    AuthResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        token:
+          type: string
+          description: Access token (JWT)
+        refreshToken:
+          type: string
+          description: Refresh token (JWT)
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            email:
+              type: string
+              format: email
+            files:
+              type: array
+              items:
+                type: string
+            online:
+              type: boolean
+      required: [message, token, refreshToken, user]

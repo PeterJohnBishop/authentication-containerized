@@ -22,6 +22,9 @@ func addOpenRoutes(r *gin.Engine, db *sql.DB) {
 	r.GET("auth/refresh", func(c *gin.Context) {
 		handlers.Refresh(c)
 	})
+	r.POST("auth/logout", func(c *gin.Context) {
+		handlers.Logout(c)
+	})
 }
 
 func addProtectedRoutes(r *gin.RouterGroup, db *sql.DB) {
