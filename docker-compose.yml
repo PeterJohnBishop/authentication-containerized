@@ -21,7 +21,7 @@ services:
 
   app:
     build: .
-    container_name: redesigned-telegram
+    container_name: authentication-containerized
     restart: always
     depends_on:
       postgres:
