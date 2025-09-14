@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Redesigned Telegram Authentication API
-  version: 1.1.0
+  version: 1.3.0
   description: |
     Authentication and user management API served by this project.
 servers:
@@ -81,21 +81,14 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                refresh_token:
-                  type: string
-              required: [refresh_token]
+              $ref: '#/components/schemas/RefreshRequest'
       responses:
         '200':
           description: New access token issued
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  access_token:
-                    type: string
+                $ref: '#/components/schemas/RefreshResponse'
         '400':
           description: Missing or invalid refresh token
         '401':
@@ -105,8 +98,14 @@ paths:
 
   /auth/logout:
     post:
-      summary: Logout current user and revoke tokens
+      summary: Logout a user and revoke tokens
       operationId: postAuthLogout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
       responses:
         '200':
           description: Logged out
@@ -117,6 +116,8 @@ paths:
                 properties:
                   message:
                     type: string
+        '400':
+          description: Invalid request body
 
   /api/users:
     get:
@@ -136,7 +137,7 @@ paths:
         '401':
           description: Unauthorized
     put:
-      summary: Update a user
+      summary: Update a user (non-password fields)
       operationId: putUsers
       security:
         - bearerAuth: []
@@ -145,7 +146,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/User'
+              $ref: '#/components/schemas/UserUpdate'
       responses:
         '200':
           description: Updated
@@ -216,6 +217,37 @@ paths:
         '500':
           description: Server error
 
+  /api/users/password:
+    post:
+      summary: Update a user's password
+      operationId: postUsersPassword
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePasswordRequest'
+      responses:
+        '200':
+          description: Password updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          description: Invalid request body
+        '401':
+          description: Unauthorized or current password incorrect
+        '404':
+          description: User not found
+        '500':
+          description: Server error
+
 components:
   securitySchemes:
     bearerAuth:
@@ -269,6 +301,24 @@ components:
             type: string
       required: [name, email, password]
 
+    UserUpdate:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        online:
+          type: boolean
+        files:
+          type: array
+          items:
+            type: string
+      required: [id]
+
     LoginRequest:
       type: object
       properties:
@@ -307,3 +357,35 @@ components:
             online:
               type: boolean
       required: [message, token, refreshToken, user]
+
+    RefreshRequest:
+      type: object
+      properties:
+        refresh_token:
+          type: string
+      required: [refresh_token]
+
+    RefreshResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+      required: [access_token]
+
+    LogoutRequest:
+      type: object
+      properties:
+        id:
+          type: string
+      required: [id]
+
+    UpdatePasswordRequest:
+      type: object
+      properties:
+        userId:
+          type: string
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+      required: [userId, currentPassword, newPassword]

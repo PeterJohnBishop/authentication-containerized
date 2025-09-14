@@ -266,8 +266,8 @@ func UpdateUser(db *sql.DB, c *gin.Context) {
 		return
 	}
 
-	query := `UPDATE users SET name=$1, email=$2, password=$3, online=$4, files=$5, updated=EXTRACT(EPOCH FROM now()) WHERE id=$6`
-	result, err := db.ExecContext(c, query, user.Name, user.Email, user.Password, user.Online, user.Files, user.ID)
+	query := `UPDATE users SET name=$1, email=$2, online=$3, files=$4, updated=EXTRACT(EPOCH FROM now()) WHERE id=$5`
+	result, err := db.ExecContext(c, query, user.Name, user.Email, user.Online, user.Files, user.ID)
 	if err != nil {
 		fmt.Println("Update query failed:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -318,6 +318,59 @@ func DeleteUserByID(db *sql.DB, c *gin.Context) {
 
 	fmt.Println("User deleted successfully:", id)
 	c.JSON(http.StatusOK, gin.H{"message": "User deleted!"})
+}
+
+type UpdatePasswordRequest struct {
+	UserID      string `json:"userId"`
+	CurrentPass string `json:"currentPassword"`
+	NewPass     string `json:"newPassword"`
+}
+
+func UpdatePassword(db *sql.DB, c *gin.Context) {
+	var req UpdatePasswordRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		fmt.Println("Failed to bind JSON:", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var storedHash string
+	query := `SELECT password FROM users WHERE id = $1`
+	err := db.QueryRowContext(c, query, req.UserID).Scan(&storedHash)
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	} else if err != nil {
+		fmt.Println("DB error fetching password:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
+		return
+	}
+
+	if !CheckPasswordHash(req.CurrentPass, storedHash) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Current password is incorrect"})
+		return
+	}
+
+	newHash, err := HashedPassword(req.NewPass)
+	if err != nil {
+		fmt.Println("Error hashing new password:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+		return
+	}
+
+	updateQuery := `UPDATE users SET password=$1, updated=EXTRACT(EPOCH FROM now()) WHERE id=$2`
+	_, err = db.ExecContext(c, updateQuery, newHash, req.UserID)
+	if err != nil {
+		fmt.Println("Error updating password:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update password"})
+		return
+	}
+
+	middleware.RevokeTokens(req.UserID)
+
+	fmt.Println("Password updated successfully and tokens revoked for user:", req.UserID)
+	c.JSON(http.StatusOK, gin.H{"message": "Password updated successfully. Please log in again."})
 }
 
 type LogoutRequest struct {
